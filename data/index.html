@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Control Panel</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f0f2f5; 
+            padding: 20px; 
+            color: #333;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container { 
+            max-width: 800px; 
+            width: 100%;
+            margin: auto; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        h1 { 
+            text-align: center; 
+            color: #1a73e8;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        .controls { 
+            display: flex; 
+            justify-content: center; 
+            gap: 20px; 
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .button { 
+            padding: 15px 30px; 
+            font-size: 18px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 50px; 
+            transition: all 0.3s ease; 
+            color: white; 
+            min-width: 160px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .button.on { 
+            background: linear-gradient(135deg, #2ecc71, #27ae60); 
+        }
+        .button.off { 
+            background: linear-gradient(135deg, #e74c3c, #c0392b); 
+        }
+        .button:active { 
+            transform: translateY(2px); 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .section { 
+            margin-top: 25px; 
+            padding: 20px; 
+            border-top: 2px solid #f0f2f5;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .section h3 {
+            color: #1a73e8;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .status-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        .status-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #1a73e8;
+        }
+        .status-value.on { color: #2ecc71; }
+        .status-value.off { color: #e74c3c; }
+        .connection-status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .last-update {
+            text-align: right;
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🔌 ESP32 Control Panel</h1>
+    
+    <div id="connectionStatus" class="connection-status connected">
+        ✅ Подключено к ESP32
+    </div>
+
+    <div class="controls">
+        <button id="btn1" class="button off" onclick="toggleRelay(1)">Relay 1: OFF</button>
+        <button id="btn2" class="button off" onclick="toggleRelay(2)">Relay 2: OFF</button>
+    </div>
+
+    <div class="section">
+        <h3>📊 Датчик Xiaomi ATC</h3>
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-label">Температура</div>
+                <div id="temp" class="status-value">--°C</div>
+            </div>
+            <div class="status-card">
+                <div class="status-label">Влажность</div>
+                <div id="hum" class="status-value">--%</div>
+            </div>
+            <div class="status-card">
+                <div class="status-label">Батарея</div>
+                <div id="batt" class="status-value">--%</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="last-update" id="lastUpdate"></div>
+</div>
+
+<script>
+    let isConnected = false;
+
+    async function getStatus() {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            const res = await fetch('/status', { signal: controller.signal });
+            clearTimeout(timeoutId);
+            
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            
+            const data = await res.json();
+            
+            // Обновляем статус подключения
+            updateConnectionStatus(true);
+            
+            // Обновляем кнопки реле
+            document.getElementById('btn1').textContent = `Relay 1: ${data.relay1.toUpperCase()}`;
+            document.getElementById('btn1').className = `button ${data.relay1}`;
+            document.getElementById('btn2').textContent = `Relay 2: ${data.relay2.toUpperCase()}`;
+            document.getElementById('btn2').className = `button ${data.relay2}`;
+
+            // Обновляем данные датчика
+            if (data.temp != 0) {
+                document.getElementById('temp').textContent = data.temp + '°C';
+                document.getElementById('hum').textContent = data.hum + '%';
+                document.getElementById('batt').textContent = data.battery + '%';
+            }
+            
+            document.getElementById('lastUpdate').textContent = 
+                `Последнее обновление: ${new Date().toLocaleTimeString()}`;
+            
+        } catch (e) {
+            console.error("Ошибка обновления:", e);
+            updateConnectionStatus(false);
+        }
+    }
+    
+    function updateConnectionStatus(connected) {
+        const statusDiv = document.getElementById('connectionStatus');
+        if (connected) {
+            statusDiv.className = 'connection-status connected';
+            statusDiv.innerHTML = '✅ Подключено к ESP32';
+            isConnected = true;
+        } else {
+            statusDiv.className = 'connection-status disconnected';
+            statusDiv.innerHTML = '❌ Потеря связи с ESP32';
+            isConnected = false;
+        }
+    }
+
+    async function toggleRelay(num) {
+        if (!isConnected) {
+            alert('Нет подключения к ESP32');
+            return;
+        }
+        
+        try {
+            const btn = document.getElementById(`btn${num}`);
+            btn.textContent = '⏳...';
+            
+            const res = await fetch(`/relay${num}/toggle`);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            
+            const state = await res.text();
+            await getStatus(); // Обновляем статус после переключения
+            
+        } catch (e) {
+            console.error("Ошибка переключения:", e);
+            alert('Ошибка при переключении реле');
+        }
+    }
+
+    // Запускаем обновление статуса
+    getStatus();
+    setInterval(getStatus, 3000);
+</script>
+
+</body>
+</html>

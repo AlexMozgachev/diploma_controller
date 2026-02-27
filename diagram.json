@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "author": "Дипломная работа Мозгачёва А.С.",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": -50,
+      "left": 200,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led2",
+      "top": 0,
+      "left": 200,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": -50,
+      "left": 150,
+      "rotate": 90,
+      "attrs": { "resistance": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 0,
+      "left": 150,
+      "rotate": 90,
+      "attrs": { "resistance": "220" }
+    }
+  ],
+  "connections": [
+    ["esp:2", "r1:1", "green", ["v"]],
+    ["r1:2", "led1:A", "red", ["v"]],
+    ["led1:C", "esp:GND.1", "black", ["v"]],
+    ["esp:4", "r2:1", "yellow", ["v"]],
+    ["r2:2", "led2:A", "orange", ["v"]],
+    ["led2:C", "esp:GND.1", "black", ["v"]],
+    ["esp:GND.2", "esp:GND.1", "black", ["v"]]
+  ]
+}

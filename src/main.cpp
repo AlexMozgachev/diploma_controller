@@ -5,8 +5,8 @@
 #include <NimBLEDevice.h>
 
 // Настройки сети
-const char* ssid = "MGTS_GPON_8453";
-const char* password = "7tkYQchY";
+const char* ssid = "iPhone Алексей";
+const char* password = "123456789";
 
 WebServer server(80);
 
@@ -111,7 +111,10 @@ void setupWebServer() {
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin("iPhone Алексей", "123456789");
+
   Serial.println("\n==================================");
   Serial.println("ESP32 + Веб-интерфейс + ATC Sensor");
   Serial.println("==================================");
